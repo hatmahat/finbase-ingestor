@@ -93,10 +93,9 @@ finbase-backend/
 │       ├── pdf_reader.py         # pikepdf + pdfplumber; pytesseract fallback
 │       ├── claude_extractor.py   # Anthropic SDK, forced tool-use record_transactions
 │       └── fingerprint.py        # sha256 dedup key
-├── migrations/                   # Sqitch migrations
-│   ├── deploy/initial_schema.sql
-│   ├── revert/initial_schema.sql
-│   └── verify/initial_schema.sql
+├── supabase/                     # Supabase CLI migrations
+│   ├── migrations/               # Deploy scripts (timestamped)
+│   └── revert/                   # Manual revert scripts
 ├── data/                         # gitignored
 │   ├── statements/               # drop PDFs here
 │   └── imports/                  # CSV for one-time migration
@@ -107,7 +106,7 @@ finbase-backend/
 
 ## Postgres schema
 
-Schema file: `migrations/deploy/initial_schema.sql` (Sqitch). Normalized design — lookup tables instead of raw strings.
+Schema file: `supabase/migrations/20260628000000_initial_schema.sql` (Supabase CLI). Normalized design — lookup tables instead of raw strings.
 
 **Core tables**
 - `transactions` — the ledger; every row is one transaction. `status` ∈ `{pending, approved, rejected}`. `fingerprint` is `UNIQUE`. `model_confidence` 0–1.
@@ -145,7 +144,7 @@ Bank Fees, Cash, Cellphone, Charity, Cinema, Coffee, Cosmetics, Credit Card, Doc
 ## Build roadmap
 
 **Phase 1 — kill the pain**
-1. Spin up Supabase; `make migrate` (Sqitch deploys `migrations/deploy/initial_schema.sql`)
+1. Spin up Supabase; `supabase db push` to apply all migrations
 2. `make import-csv` — seed 809 historical transactions from `data/imports/`
 3. `make ingest f=<pdf> w="<wallet>"` — PDF → Claude extraction → Supabase insert with dedup
 4. Frontend review queue: approve / reject pending rows per transaction
@@ -178,7 +177,7 @@ Bank Fees, Cash, Cellphone, Charity, Cinema, Coffee, Cosmetics, Credit Card, Doc
 
 ## Open items
 
-- Set up Supabase; fill in `.env` from `.env.example`; run `make migrate`
+- Set up Supabase; fill in `.env` from `.env.example`; run `supabase db push`
 - Seed history: `make import-csv`
 - Test ingestion: `make ingest f=data/statements/<file>.pdf w="<wallet>"`
 - Tune Claude extraction prompt against a real BCA/BRI/Mandiri statement

@@ -1,0 +1,1 @@
+-- Intentionally left blank (migration 2 had no changes)
