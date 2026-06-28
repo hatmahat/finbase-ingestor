@@ -80,7 +80,7 @@ Effectively **$0/month except a few cents of Claude API per statement.**
 ## Project structure
 
 ```
-finbase-backend/
+finbase-ingestor/
 ├── app/                          # Application logic
 │   ├── main.py                   # CLI entry: ingest, ingest-dir, import-csv
 │   ├── core/                     # config.py (Settings), database.py (Supabase client)

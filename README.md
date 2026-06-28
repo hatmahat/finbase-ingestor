@@ -60,7 +60,7 @@ The Python backend is only needed for ingestion — it holds the Anthropic API k
 ## Project structure
 
 ```
-finbase-backend/
+finbase-ingestor/
 ├── app/                          # Python package — application logic
 │   ├── main.py                   # CLI entry point (typer): ingest, ingest-dir, import-csv
 │   ├── core/
