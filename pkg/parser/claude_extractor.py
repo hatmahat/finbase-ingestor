@@ -18,7 +18,7 @@ TOOL_SCHEMA = {
                     "properties": {
                         "txn_date":        {"type": "string", "description": "ISO date YYYY-MM-DD"},
                         "amount":          {"type": "number", "description": "Always positive"},
-                        "type":            {"type": "string", "enum": ["expense", "income", "transfer"]},
+                        "type":            {"type": "string", "enum": ["expense", "income", "transfer", "refund"]},
                         "category":        {"type": "string", "description": "One of the 50 allowed categories"},
                         "wallet":          {"type": "string", "description": "Source wallet / account name"},
                         "to_wallet":       {"type": "string", "description": "Destination wallet (transfers only)"},
@@ -46,7 +46,12 @@ Maintenance, Medication, Miscellaneous, Others, Parking, Public Transport,
 Salary, Shopping, Subscriptions, Taxi, Telephone, Tolls, Transfer,
 Travel Attractions, Treat, Unknown, Vacation, Vehicle Tax, Water, Zakat.
 Set confidence 0–1 based on how certain you are of the category.
-Amount is always positive; direction is captured in type (expense/income/transfer)."""
+Amount is ALWAYS positive — direction is captured by type:
+- type=expense: money leaving the account (charges, purchases, fees)
+- type=income: real money earned (salary, interest, investment returns, cashback rewards)
+- type=refund: money returned for a previous purchase (credits, reversals, cancelled orders)
+- type=transfer: money moving between accounts (must have a destination)
+On credit card statements, negative amounts are type=refund if they reverse a purchase, or type=income if they are genuine earnings."""
 
 
 def extract(statement_text: str, wallet_name: str) -> list[ExtractedTransaction]:

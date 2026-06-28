@@ -13,7 +13,7 @@ select
         sum(
             case
                 when tt.name in ('expense', 'transfer') and t.wallet_id    = w.id then -t.amount
-                when tt.name = 'income'                 and t.wallet_id    = w.id then  t.amount
+                when tt.name in ('income', 'refund')    and t.wallet_id    = w.id then  t.amount
                 when tt.name = 'transfer'               and t.to_wallet_id = w.id then  t.amount
                 else 0
             end
