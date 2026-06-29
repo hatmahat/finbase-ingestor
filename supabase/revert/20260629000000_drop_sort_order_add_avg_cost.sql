@@ -1,3 +1,10 @@
+alter table holdings drop column avg_cost;
+
+alter table category_groups add column sort_order int not null default 0;
+alter table categories      add column sort_order int not null default 0;
+alter table wallets         add column sort_order int not null default 0;
+
+-- restore view with sort_order
 create or replace view wallet_balances as
 select
     w.id,
@@ -7,6 +14,7 @@ select
     wt.is_liability,
     c.name           as currency,
     w.is_active,
+    w.sort_order,
     w.opening_balance,
     w.opening_balance + coalesce(
         sum(
@@ -25,4 +33,5 @@ join wallet_institutions wi on wi.id = w.wallet_institution_id
 join currencies          c  on c.id  = w.currency_id
 left join transactions   t  on t.wallet_id = w.id or t.to_wallet_id = w.id
 left join transaction_types tt on tt.id = t.transaction_type_id
-group by w.id, w.name, wi.name, wt.name, wt.is_liability, c.name, w.is_active, w.opening_balance;
+group by w.id, w.name, wi.name, wt.name, wt.is_liability, c.name, w.is_active, w.sort_order, w.opening_balance
+order by w.sort_order;

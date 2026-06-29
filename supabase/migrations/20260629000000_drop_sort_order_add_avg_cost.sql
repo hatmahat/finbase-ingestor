@@ -1,3 +1,12 @@
+drop view wallet_balances;
+
+alter table category_groups drop column sort_order;
+alter table categories      drop column sort_order;
+alter table wallets         drop column sort_order;
+
+alter table holdings add column avg_cost numeric(18,4) not null default 0;
+
+-- recreate view without sort_order
 create or replace view wallet_balances as
 select
     w.id,
