@@ -59,7 +59,7 @@ def extract(statement_text: str, wallet_name: str) -> list[ExtractedTransaction]
 
     message = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=8192,
+        max_tokens=16384,
         system=SYSTEM_PROMPT,
         tools=[TOOL_SCHEMA],
         tool_choice={"type": "tool", "name": TOOL_NAME},
@@ -70,6 +70,9 @@ def extract(statement_text: str, wallet_name: str) -> list[ExtractedTransaction]
             }
         ],
     )
+
+    if message.stop_reason == "max_tokens":
+        raise RuntimeError("Claude response truncated (max_tokens hit) — increase max_tokens or chunk the statement")
 
     tool_block = next(b for b in message.content if b.type == "tool_use")
     raw = tool_block.input["transactions"]

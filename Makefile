@@ -6,15 +6,15 @@ endif
 .PHONY: install ingest ingest-dir import-csv migrate revert new-migration
 
 install:
-	pip install -r requirements.txt
+	pip3 install -r requirements.txt
 
 # Usage: make ingest f=data/statements/bca-jan-2026.pdf w="BCA (Leisure)"
 ingest:
-	python -m app.main ingest "$(f)" --wallet "$(w)"
+	python3 -m app.main ingest "$(f)" --wallet "$(w)"
 
 # Usage: make ingest-dir d=data/statements w="BCA (Leisure)"
 ingest-dir:
-	python -m app.main ingest-dir $(d) --wallet "$(w)"
+	python3 -m app.main ingest-dir $(d) --wallet "$(w)"
 
 # Usage: make import-csv f=data/imports/file.csv
 import-csv:

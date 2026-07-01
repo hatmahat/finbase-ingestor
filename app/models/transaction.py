@@ -17,5 +17,5 @@ class Transaction:
     raw_description: str | None = None
     balance_after: Decimal | None = None
     model_confidence: float | None = None
-    file_name: str | None = None
+    import_id: int | None = None
     status: str = "pending"

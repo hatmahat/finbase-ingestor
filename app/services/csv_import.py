@@ -3,7 +3,7 @@ from pathlib import Path
 from app.core.database import get_client
 from app.schemas.csv_row import CsvRow
 from pkg.parser import fingerprint as fp
-from app.repositories import transaction as txn_repo, wallet as wallet_repo, category as cat_repo
+from app.repositories import transaction as txn_repo, wallet as wallet_repo, category as cat_repo, imports as imports_repo
 from app.models.transaction import Transaction
 
 # Categories renamed/split since the CSV was exported — map old name → current DB name.
@@ -18,6 +18,8 @@ def run(csv_path: str) -> tuple[int, int]:
     category_map = cat_repo.get_name_to_id(client)
     txn_type_map = _get_txn_type_map(client)
     currency_id = _get_currency_id(client, "IDR")
+
+    import_id = imports_repo.get_or_create(client, Path(csv_path).name, "csv")
 
     transactions: list[Transaction] = []
     with open(csv_path, newline="", encoding="utf-8") as f:
@@ -54,7 +56,7 @@ def run(csv_path: str) -> tuple[int, int]:
                     to_wallet_id=to_wallet_id,
                     note=row.note,
                     fingerprint=fingerprint,
-                    file_name=Path(csv_path).name,
+                    import_id=import_id,
                     status="approved",
                 )
             )
