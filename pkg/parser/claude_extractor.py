@@ -35,6 +35,7 @@ TOOL_SCHEMA = {
     },
 }
 
+## TODO: make dynamic based on the categories in the database instead of hardcoding them here
 SYSTEM_PROMPT = """You are a financial data extraction assistant.
 Extract every transaction from the bank e-statement text provided.
 Categorize each transaction using exactly one of these categories:
@@ -57,9 +58,11 @@ On credit card statements, negative amounts are type=refund if they reverse a pu
 def extract(statement_text: str, wallet_name: str) -> list[ExtractedTransaction]:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-    message = client.messages.create(
+    # Streaming — a full statement can take minutes to generate, which trips the
+    # SDK's HTTP read timeout on a non-streaming request.
+    with client.messages.stream(
         model="claude-sonnet-4-6",
-        max_tokens=16384,
+        max_tokens=64000,
         system=SYSTEM_PROMPT,
         tools=[TOOL_SCHEMA],
         tool_choice={"type": "tool", "name": TOOL_NAME},
@@ -69,7 +72,8 @@ def extract(statement_text: str, wallet_name: str) -> list[ExtractedTransaction]
                 "content": f"Wallet / account: {wallet_name}\n\n{statement_text}",
             }
         ],
-    )
+    ) as stream:
+        message = stream.get_final_message()
 
     if message.stop_reason == "max_tokens":
         raise RuntimeError("Claude response truncated (max_tokens hit) — increase max_tokens or chunk the statement")
