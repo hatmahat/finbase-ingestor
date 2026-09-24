@@ -51,7 +51,7 @@ Built as a **personal tool + portfolio/learning artifact — not a business.** G
 
 **AI**
 - Anthropic API, structured output via forced tool-use (`record_transactions`) → returns typed JSON array
-- `claude-sonnet-4-6` for accuracy; swap to `claude-haiku-4-5-20251001` to cut cost
+- `claude-sonnet-4` for accuracy; swap to `claude-haiku-4` to cut cost
 
 ---
 
@@ -106,12 +106,13 @@ finbase-ingestor/
 
 ## Postgres schema
 
-Schema file: `supabase/migrations/20260628000000_initial_schema.sql` (Supabase CLI). Normalized design — lookup tables instead of raw strings.
+Schema managed via `supabase/migrations/` (Supabase CLI). Normalized design — lookup tables instead of raw strings.
 
 **Core tables**
-- `transactions` — the ledger; every row is one transaction. `status` ∈ `{pending, approved, rejected}`. `fingerprint` is `UNIQUE`. `model_confidence` 0–1.
+- `transactions` — the ledger; every row is one transaction. `status` ∈ `{pending, approved, rejected}`. `fingerprint` is `UNIQUE`. `model_confidence` 0–1. References `import_id` for tracking batch imports.
 - `wallets` — accounts (BCA Leisure, BRI Credit Card, Mandiri Opr. Cash, etc.). References `wallet_types`, `wallet_institutions`, `currencies`.
 - `categories` / `category_groups` — 50-category taxonomy; each category belongs to one group.
+- `imports` — tracks CSV/PDF import batches with metadata (source_file, import_type, status).
 
 **Lookup tables**
 - `wallet_types` — `bank`, `cash`, `credit_card`, `e_wallet`, `investment`, `restricted`; `is_liability` flag
@@ -120,12 +121,28 @@ Schema file: `supabase/migrations/20260628000000_initial_schema.sql` (Supabase C
 - `transaction_types` — `expense`, `income`, `transfer`; `is_income` flag
 
 **Investment tables**
-- `securities` — ticker, name, asset_class (`stock`, `etf`, `crypto`); linked to a wallet (platform)
+- `securities` — ticker, name, asset_class (`stock`, `etf`, `crypto`); linked to a wallet (platform). Unique constraint on `(wallet_id, ticker)`.
 - `holdings` — current share count per security
+
+**Views**
+- `wallet_balances` — materialized balances per wallet with `avg_cost` for investment wallets
 
 **Triggers**
 - `set_updated_at` — auto-stamps `updated_at` on every table
 - `check_transfer_shape` — enforces: transfers must have `to_wallet_id` set and source ≠ destination; expense/income must not have `to_wallet_id`
+
+**Indexes**
+- Foreign key indexes on `transactions(wallet_id)`, `transactions(to_wallet_id)`, `wallets(wallet_type_id)`, `securities(wallet_id)` for query performance
+
+**Migrations history**
+- `20260628000000_initial_schema.sql` — base schema
+- `20260628000001_seed_lookup_tables.sql` — wallet types, institutions, currencies, transaction types, categories
+- `20260628000002_seed_wallets.sql` — initial wallet data
+- `20260628000003_wallet_balance_view.sql` — wallet_balances view
+- `20260628000004_normalize_imports.sql` — imports table + import_id FK
+- `20260629000000_drop_sort_order_add_avg_cost.sql` — avg_cost in wallet_balances
+- `20260629000001_fix_securities_ticker_unique.sql` — unique constraint on (wallet_id, ticker)
+- `20260702000000_add_fk_indexes.sql` — performance indexes
 
 ---
 
@@ -137,7 +154,7 @@ Bank Fees, Cash, Cellphone, Charity, Cinema, Coffee, Cosmetics, Credit Card, Doc
 
 ## Data files
 
-- `data/imports/transactions-from-1-1-2025-to-31-12-2026.csv` — 809 transactions from Simple app (Jan–Dec 2025). One-time import to seed historical data. CSV columns: `date, amount, type, category, originWallet, destinationWallet, note, location`.
+- `data/imports/transactions-from-1-1-2025-to-31-12-2025.csv` — 809 transactions from Simple app (Jan–Dec 2025). One-time import to seed historical data. CSV columns: `date, amount, type, category, originWallet, destinationWallet, note, location`.
 
 ---
 
@@ -145,7 +162,7 @@ Bank Fees, Cash, Cellphone, Charity, Cinema, Coffee, Cosmetics, Credit Card, Doc
 
 **Phase 1 — kill the pain**
 1. Spin up Supabase; `supabase db push` to apply all migrations
-2. `make import-csv` — seed 809 historical transactions from `data/imports/`
+2. `make import-csv f=data/imports/transactions-from-1-1-2025-to-31-12-2025.csv` — seed 809 historical transactions
 3. `make ingest f=<pdf> w="<wallet>"` — PDF → Claude extraction → Supabase insert with dedup
 4. Frontend review queue: approve / reject pending rows per transaction
 
@@ -178,7 +195,7 @@ Bank Fees, Cash, Cellphone, Charity, Cinema, Coffee, Cosmetics, Credit Card, Doc
 ## Open items
 
 - Set up Supabase; fill in `.env` from `.env.example`; run `supabase db push`
-- Seed history: `make import-csv`
+- Seed history: `make import-csv f=data/imports/transactions-from-1-1-2025-to-31-12-2025.csv`
 - Test ingestion: `make ingest f=data/statements/<file>.pdf w="<wallet>"`
 - Tune Claude extraction prompt against a real BCA/BRI/Mandiri statement
 - Build frontend review queue (Next.js in `finbase-frontend` repo)

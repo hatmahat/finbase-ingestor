@@ -110,7 +110,7 @@ finbase-ingestor/
 | Database | Supabase (Postgres) + supabase-js |
 | Backend | Python CLI (`make ingest`) via typer — ingestion only; no API server |
 | PDF parsing | pdfplumber + pikepdf; pytesseract for scanned statements |
-| AI | Anthropic SDK — `claude-sonnet-4-6` (swap to `claude-haiku-4-5` to cut cost) |
+| AI | Anthropic SDK — `claude-sonnet-4` (swap to `claude-haiku-4` to cut cost) |
 | Hosting | Vercel (frontend), Cloud Run or Railway (Python backend) |
 
 Cost: effectively $0/month except a few cents of Claude API per statement.
@@ -121,13 +121,17 @@ Cost: effectively $0/month except a few cents of Claude API per statement.
 
 The schema lives in `supabase/migrations/` (managed via Supabase CLI). Core tables:
 
-- **`transactions`** — the ledger; every row is one transaction
+- **`transactions`** — the ledger; every row is one transaction. `fingerprint` is UNIQUE for dedup. References `import_id` for batch tracking.
 - **`wallets`** — accounts (BCA Leisure, BRI Credit Card, Mandiri Opr. Cash, etc.)
 - **`categories`** / **`category_groups`** — 50-category taxonomy (Food, Coffee, Investment, Salary…)
 - **`wallet_types`** / **`wallet_institutions`** / **`currencies`** — lookup tables
-- **`securities`** / **`holdings`** — investment positions (Nanovest, GoTrade)
+- **`securities`** / **`holdings`** — investment positions (Nanovest, GoTrade). Unique constraint on `(wallet_id, ticker)`.
+- **`imports`** — tracks CSV/PDF import batches with metadata
 
-All tables carry `created_at` / `updated_at` with an auto-trigger (`set_updated_at`). Transfers are validated by a `check_transfer_shape` trigger that enforces `to_wallet_id` is set and source ≠ destination.
+**Views:**
+- **`wallet_balances`** — materialized balances per wallet with `avg_cost` for investment wallets
+
+All tables carry `created_at` / `updated_at` with an auto-trigger (`set_updated_at`). Transfers are validated by a `check_transfer_shape` trigger that enforces `to_wallet_id` is set and source ≠ destination. Foreign key indexes improve query performance.
 
 ---
 
@@ -135,7 +139,7 @@ All tables carry `created_at` / `updated_at` with an auto-trigger (`set_updated_
 
 **Phase 1 — kill the pain**
 1. Spin up Supabase; run `make migrate` (`supabase db push` applies all migrations)
-2. `make import-csv` — seed 809 historical transactions from `data/imports/`
+2. `make import-csv f=data/imports/transactions-from-1-1-2025-to-31-12-2025.csv` — seed 809 historical transactions
 3. `make ingest f=<pdf> w="<wallet>"` — PDF → Claude extraction → Supabase insert with dedup
 4. Frontend review queue: approve / reject pending rows per transaction
 
