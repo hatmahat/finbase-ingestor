@@ -4,6 +4,10 @@
 # Local data — never commit PDFs or CSVs
 data/
 
+# Backups — never commit database dumps
+backups/
+!backups/.gitkeep
+
 # Logs
 logs/
 
