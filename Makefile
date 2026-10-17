@@ -39,7 +39,7 @@ new-migration:
 backup:
 	@set -o pipefail; \
 	echo "📦 Backing up Supabase database..."; \
-	DIR=backups/$$(date +%Y-%m); \
+	DIR=data/backups/$$(date +%Y-%m); \
 	mkdir -p $$DIR; \
 	echo "  → Full database dump (compressed)..." && \
 	pg_dump "$(SUPABASE_DB_URL)" | gzip > $$DIR/full-$$(date +%Y%m%d-%H%M%S).sql.gz && \
@@ -55,9 +55,9 @@ backup:
 	echo "✅ Backup complete: $$DIR/"
 
 # Restore database from backup
-# Usage: make restore backup=backups/2026-09/full-20260924-165300.sql.gz
+# Usage: make restore backup=data/backups/2026-09/full-20260924-165300.sql.gz
 restore:
-	@[ "$(backup)" ] || (echo "Usage: make restore backup=backups/YYYY-MM/full-YYYYMMDD-HHMMSS.sql.gz"; exit 1)
+	@[ "$(backup)" ] || (echo "Usage: make restore backup=data/backups/YYYY-MM/full-YYYYMMDD-HHMMSS.sql.gz"; exit 1)
 	@[ -f "$(backup)" ] || (echo "❌ File not found: $(backup)"; exit 1)
 	@echo "⚠️  WARNING: This will OVERWRITE your current database!"
 	@echo "⚠️  Restoring from: $(backup)"
