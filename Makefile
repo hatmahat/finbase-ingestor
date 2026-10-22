@@ -31,9 +31,10 @@ revert:
 new-migration:
 	@[ "$(name)" ] || (echo "Usage: make new-migration name=<migration_name>"; exit 1)
 	@supabase migration new $(name)
-	@DATE=$$(date +%Y%m%d); \
-	touch "supabase/revert/$${DATE}_$(name).sql"; \
-	echo "Created supabase/revert/$${DATE}_$(name).sql"
+	@FILE=$$(ls supabase/migrations/*_$(name).sql | tail -1); \
+	[ -n "$$FILE" ] || (echo "Could not find the new migration file"; exit 1); \
+	touch "supabase/revert/$$(basename $$FILE)"; \
+	echo "Created supabase/revert/$$(basename $$FILE)"
 
 # Backup database to backups/ directory
 backup:
