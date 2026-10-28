@@ -5,57 +5,52 @@ from app.schemas.extracted_transaction import ExtractedTransaction
 
 TOOL_NAME = "record_transactions"
 
-TOOL_SCHEMA = {
-    "name": TOOL_NAME,
-    "description": "Record all transactions extracted from a bank e-statement.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "transactions": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "txn_date":        {"type": "string", "description": "ISO date YYYY-MM-DD"},
-                        "amount":          {"type": "number", "description": "Always positive"},
-                        "type":            {"type": "string", "enum": ["expense", "income", "transfer", "refund"]},
-                        "category":        {"type": "string", "description": "One of the 50 allowed categories"},
-                        "wallet":          {"type": "string", "description": "Source wallet / account name"},
-                        "to_wallet":       {"type": "string", "description": "Destination wallet (transfers only)"},
-                        "note":            {"type": "string"},
-                        "raw_description": {"type": "string", "description": "Original bank narration verbatim"},
-                        "balance_after":   {"type": "number", "description": "Running balance after this transaction"},
-                        "confidence":      {"type": "number", "minimum": 0, "maximum": 1},
+def build_tool_schema(categories: list[str], txn_types: list[str]) -> dict:
+    """Tool schema whose enums come from the DB, so new categories/types need no code change."""
+    return {
+        "name": TOOL_NAME,
+        "description": "Record all transactions extracted from a bank e-statement.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "txn_date":        {"type": "string", "description": "ISO date YYYY-MM-DD"},
+                            "amount":          {"type": "number", "description": "Always positive"},
+                            "type":            {"type": "string", "enum": txn_types},
+                            "category":        {"type": "string", "enum": categories},
+                            "wallet":          {"type": "string", "description": "Source wallet / account name"},
+                            "to_wallet":       {"type": "string", "description": "Destination wallet (transfers only)"},
+                            "note":            {"type": "string"},
+                            "raw_description": {"type": "string", "description": "Original bank narration verbatim"},
+                            "balance_after":   {"type": "number", "description": "Running balance after this transaction"},
+                            "confidence":      {"type": "number", "minimum": 0, "maximum": 1},
+                        },
+                        "required": ["txn_date", "amount", "type", "wallet", "confidence"],
                     },
-                    "required": ["txn_date", "amount", "type", "wallet", "confidence"],
-                },
-            }
+                }
+            },
+            "required": ["transactions"],
         },
-        "required": ["transactions"],
-    },
-}
+    }
 
-## TODO: make dynamic based on the categories in the database instead of hardcoding them here
+
 SYSTEM_PROMPT = """You are a financial data extraction assistant.
 Extract every transaction from the bank e-statement text provided.
-Categorize each transaction using exactly one of these categories:
-Bank Fees, Cash, Cellphone, Charity, Cinema, Coffee, Cosmetics, Credit Card,
-Doctor, Drinks, Education, Electricity, Electronics, Fashion, Flight, Food,
-Games, Gas, Groceries, Gym, Health Insurance, Home Maintenance, Home Supplies,
-Hotel, Income, Income Tax, Internet, Investment, Laundry, Life Insurance,
-Maintenance, Medication, Miscellaneous, Others, Parking, Public Transport,
-Salary, Shopping, Subscriptions, Taxi, Telephone, Tolls, Transfer,
-Travel Attractions, Treat, Unknown, Vacation, Vehicle Tax, Water, Zakat.
+Categorize each transaction using the category enum in the record_transactions tool.
+Pick the most specific category that fits.
 Set confidence 0–1 based on how certain you are of the category.
 Amount is ALWAYS positive — direction is captured by type:
 - type=expense: money leaving the account (charges, purchases, fees)
-- type=income: real money earned (salary, interest, investment returns, cashback rewards)
-- type=refund: money returned for a previous purchase (credits, reversals, cancelled orders)
+- type=income: money coming in (salary, interest, investment returns, cashback, refunds and reversals of earlier purchases)
 - type=transfer: money moving between accounts (must have a destination)
-On credit card statements, negative amounts are type=refund if they reverse a purchase, or type=income if they are genuine earnings."""
+On credit card statements, negative amounts are credits to the card: record them as type=income."""
 
 
-def extract(statement_text: str, wallet_name: str) -> list[ExtractedTransaction]:
+def extract(statement_text: str, wallet_name: str, categories: list[str], txn_types: list[str]) -> list[ExtractedTransaction]:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     # Streaming — a full statement can take minutes to generate, which trips the
@@ -64,7 +59,7 @@ def extract(statement_text: str, wallet_name: str) -> list[ExtractedTransaction]
         model="claude-sonnet-4-6",
         max_tokens=64000,
         system=SYSTEM_PROMPT,
-        tools=[TOOL_SCHEMA],
+        tools=[build_tool_schema(categories, txn_types)],
         tool_choice={"type": "tool", "name": TOOL_NAME},
         messages=[
             {

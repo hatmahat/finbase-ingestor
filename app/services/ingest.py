@@ -14,10 +14,10 @@ def run(pdf_path: str, wallet_name: str, password: str | None = None) -> tuple[i
     wallet_id = wallet_map[wallet_name]
     import_id = imports_repo.get_or_create(client, Path(pdf_path).name, "pdf")
 
-    text = pdf_reader.extract_text(pdf_path, password=password)
-    extracted = claude_extractor.extract(text, wallet_name)
-
     txn_type_map = _get_txn_type_map(client)
+
+    text = pdf_reader.extract_text(pdf_path, password=password)
+    extracted = claude_extractor.extract(text, wallet_name, list(category_map), list(txn_type_map))
 
     transactions: list[Transaction] = []
     for e in extracted:
