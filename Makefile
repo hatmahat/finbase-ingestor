@@ -3,7 +3,7 @@ ifneq (,$(wildcard .env))
     export
 endif
 
-.PHONY: install ingest ingest-dir import-csv migrate revert new-migration backup restore
+.PHONY: install ingest ingest-dir import-csv migrate revert new-migration backup restore export-schema
 
 install:
 	pip3 install -r requirements.txt
@@ -68,3 +68,15 @@ restore:
 	echo "  → Restoring database..." && \
 	gunzip -c "$(backup)" | psql "$(SUPABASE_DB_URL)" -v ON_ERROR_STOP=1 && \
 	echo "✅ Database restored from $(backup)"
+
+# Usage: make export-schema out=../finbase-mcp/schema/public.sql
+# Schema-only snapshot of the live database (no data) for consumer repos.
+# sed drops the random \restrict key that newer pg_dump adds, so re-runs don't diff.
+export-schema:
+	@[ "$(out)" ] || (echo "Usage: make export-schema out=<file>"; exit 1)
+	@mkdir -p "$$(dirname "$(out)")"
+	@set -o pipefail; \
+	{ pg_dump --schema-only --schema=public --no-owner "$(SUPABASE_DB_URL)" \
+	    | sed -E '/^\\(un)?restrict /d' > "$(out).tmp" && mv "$(out).tmp" "$(out)"; } \
+	  || { rm -f "$(out).tmp"; exit 1; }; \
+	echo "✅ Schema written to $(out)"
