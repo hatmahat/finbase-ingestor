@@ -121,7 +121,7 @@ Schema managed via `supabase/migrations/` (Supabase CLI). Normalized design — 
 - `transaction_types` — `expense`, `income`, `transfer`; `is_income` flag
 
 **Investment tables**
-- `securities` — ticker, name, asset_class (`stock`, `etf`, `crypto`); linked to a wallet (platform). Unique constraint on `(wallet_id, ticker)`.
+- `securities` — ticker, name, asset_class (`stock`, `etf`, `crypto`, `forex`); linked to a wallet (platform). Unique constraint on `(wallet_id, ticker)`.
 - `holdings` — current share count per security
 
 **Views**

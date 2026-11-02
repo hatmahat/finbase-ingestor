@@ -125,7 +125,7 @@ This flow runs **once** to seed historical data. After that, only PDF ingestion 
 - `transactions` — the ledger. Every row is one financial event.
 - `wallets` — accounts (references wallet_types, institutions, currencies)
 - `categories` — 50-category taxonomy (references category_groups)
-- `securities` — ticker, name, asset_class (stock, etf, crypto)
+- `securities` — ticker, name, asset_class (stock, etf, crypto, forex)
 - `holdings` — current share count per security
 
 ### Key Constraints
